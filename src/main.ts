@@ -140,6 +140,11 @@ class TodoPanelView extends ItemView {
   }
 
   buildSubtaskInput(el: HTMLElement, file: TFile) {
+    el.addClass("todo-subtask-row");
+
+    const cb = el.createSpan("todo-subtask-checkbox");
+    setIcon(cb, "circle");
+
     const input = el.createEl("input", {
       type: "text", placeholder: "Add subtask...", cls: "todo-subtask-input",
     });
@@ -149,7 +154,7 @@ class TodoPanelView extends ItemView {
         const text = input.value.trim();
         await this.plugin.app.vault.process(file, (data: string) =>
           data.trimEnd() + "\n- [ ] " + text + "\n");
-        el.empty();
+        el.empty(); el.removeClass("todo-subtask-row");
         await this.buildSubtaskArea(el, file.path);
       }
     });

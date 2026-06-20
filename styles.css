@@ -29,11 +29,6 @@
   padding: 6px 4px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.1s;
-}
-
-.todo-card-row:hover {
-  background-color: var(--background-modifier-hover);
 }
 
 .todo-icon {
@@ -75,12 +70,6 @@
   height: 20px;
   flex-shrink: 0;
   color: var(--text-muted);
-  border-radius: 4px;
-}
-
-.todo-chevron:hover {
-  background-color: var(--background-modifier-hover);
-  color: var(--text-normal);
 }
 
 .todo-chevron svg {
@@ -109,16 +98,6 @@
   height: 16px;
   flex-shrink: 0;
   color: var(--text-muted);
-  cursor: pointer;
-  border-radius: 3px;
-}
-
-.todo-subtask-checkbox:hover {
-  color: var(--text-accent);
-}
-
-.todo-subtask-checkbox.is-done {
-  color: var(--text-accent);
 }
 
 .todo-subtask-checkbox svg {
@@ -134,10 +113,6 @@
   min-width: 20px;
 }
 
-.todo-subtask-text:hover {
-  border-bottom-color: var(--text-faint);
-}
-
 .todo-subtask-text:focus {
   color: var(--text-normal);
   border-bottom-color: var(--interactive-accent);
@@ -148,7 +123,7 @@
   padding: 2px 0;
   font-size: 12px;
   border: none;
-  border-bottom: 1px dashed var(--text-faint);
+  border-bottom: 1px dashed transparent;
   background: transparent;
   color: var(--text-muted);
   outline: none;
