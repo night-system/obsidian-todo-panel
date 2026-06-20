@@ -72,7 +72,7 @@ class TodoPanelView extends ItemView {
 
       if (isExpanded) {
         const subEl = wrapper.createDiv("todo-subtask");
-        subEl.style.paddingLeft = "25px";
+        subEl.style.paddingLeft = "25.5px";
         this.buildSubtaskArea(subEl, task.path);
       }
     }
@@ -80,9 +80,6 @@ class TodoPanelView extends ItemView {
     if (tasks.length === 0)
       list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
 
-    container.createDiv("todo-panel-version").createSpan({
-      text: "v" + this.plugin.manifest.version,
-    });
     container.scrollTop = scrollTop;
   }
 

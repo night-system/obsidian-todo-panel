@@ -121,15 +121,3 @@
   color: var(--text-faint);
   font-size: 12px;
 }
-
-.todo-panel-version {
-  margin-top: 10px;
-  padding-top: 6px;
-  border-top: 1px solid var(--background-modifier-border);
-  text-align: center;
-}
-
-.todo-panel-version span {
-  font-size: 11px;
-  color: var(--text-faint);
-}
