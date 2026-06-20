@@ -25,7 +25,7 @@
 .todo-card-wrapper {
   display: flex;
   flex-direction: column;
-  padding-top: 2px;
+  padding-top: 4px;
 }
 
 .todo-card-row {
