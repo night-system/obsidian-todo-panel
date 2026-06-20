@@ -75,9 +75,8 @@
   height: 16px;
 }
 
-/* subtask area — no borders, no hover, no effects */
-
 .todo-subtask {
+  padding: 0;
   padding-left: 44px;
 }
 
@@ -103,31 +102,35 @@
   height: 14px;
 }
 
-.todo-subtask-text {
-  font-size: 12px;
-  color: var(--text-muted);
-  outline: none;
-  border: none;
-  background: transparent;
-  min-width: 20px;
-}
-
+.todo-subtask-text,
 .todo-subtask-input {
   font-size: 12px;
+  line-height: 1.4;
   color: var(--text-muted);
   outline: none;
   border: none;
   background: transparent;
   padding: 0;
   margin: 0;
+  font-family: inherit;
+  height: 17px;
+}
+
+.todo-subtask-text {
+  min-width: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-subtask-input {
   flex: 1;
+  min-width: 0;
 }
 
 .todo-subtask-input::placeholder {
   color: var(--text-faint);
 }
-
-/* version */
 
 .todo-panel-version {
   margin-top: 10px;
