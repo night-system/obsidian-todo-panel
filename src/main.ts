@@ -164,6 +164,11 @@ class TodoPanelView extends ItemView {
     const f = cfg.customPriorities.find(x => x.value === p);
     return f?.color ?? null;
   }
+  getPriorityWeight(p: string, cfg: TaskNotesConfig | null): number {
+    if (!cfg?.customPriorities) return 0;
+    const f = cfg.customPriorities.find(x => x.value === p);
+    return f ? (f as any).weight ?? 0 : 0;
+  }
 
   async collectTasks(): Promise<TaskItem[]> {
     const r: TaskItem[] = [];
@@ -188,7 +193,11 @@ class TodoPanelView extends ItemView {
         subtaskCount: count,
       });
     }
-    r.sort((a, b) => b.dateModified.localeCompare(a.dateModified));
+    r.sort((a, b) => {
+      const wa = this.getPriorityWeight(a.priority, this.plugin.taskNotesConfig);
+      const wb = this.getPriorityWeight(b.priority, this.plugin.taskNotesConfig);
+      return wb - wa;
+    });
     return r;
   }
 }

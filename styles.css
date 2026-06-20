@@ -31,8 +31,8 @@
 .todo-card-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 4px;
+  gap: 6px;
+  padding: 6px 2px;
 }
 
 .todo-icon {
@@ -67,10 +67,15 @@
 }
 
 .todo-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
   color: var(--text-muted);
   flex-shrink: 0;
-  min-width: 16px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
   text-align: center;
 }
 
