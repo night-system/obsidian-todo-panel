@@ -72,7 +72,7 @@ class TodoPanelView extends ItemView {
 
       if (isExpanded) {
         const subEl = wrapper.createDiv("todo-subtask");
-        subEl.style.paddingLeft = "24px";
+        subEl.style.paddingLeft = "25px";
         this.buildSubtaskArea(subEl, task.path);
       }
     }
