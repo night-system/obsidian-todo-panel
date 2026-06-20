@@ -41,17 +41,10 @@ class TodoPanelView extends ItemView {
     container.addClass("todo-panel-container");
 
     const tasks = this.collectTasks();
-
-    const header = container.createDiv("todo-panel-header");
-    header.createSpan({ text: `进行中的任务 (${tasks.length})` });
-
-    const refreshBtn = header.createEl("button", { text: "刷新" });
-    refreshBtn.addEventListener("click", () => this.render());
-
     const list = container.createDiv("todo-panel-list");
 
     if (tasks.length === 0) {
-      list.createEl("p", { text: "没有进行中的任务", cls: "todo-panel-empty" });
+      list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
     } else {
       for (const task of tasks) {
         const card = list.createDiv("todo-card");
@@ -95,6 +88,9 @@ class TodoPanelView extends ItemView {
 
       const fm = cache.frontmatter as Record<string, unknown>;
       if (fm.status !== "in-progress") continue;
+
+      const tags: string[] = (fm.tags as string[]) || [];
+      if (tags.includes("archived")) continue;
 
       const title = (fm.title as string) || file.basename;
       const priority = (fm.priority as string) || "";
