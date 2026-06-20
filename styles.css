@@ -27,8 +27,6 @@
   align-items: center;
   gap: 8px;
   padding: 6px 4px;
-  border-radius: 6px;
-  cursor: pointer;
 }
 
 .todo-icon {
@@ -77,10 +75,10 @@
   height: 16px;
 }
 
-/* -- subtask -- */
+/* subtask area — no borders, no hover, no effects */
 
 .todo-subtask {
-  padding: 0 0 2px 44px;
+  padding-left: 44px;
 }
 
 .todo-subtask-row {
@@ -109,36 +107,27 @@
   font-size: 12px;
   color: var(--text-muted);
   outline: none;
-  border-bottom: 1px dashed transparent;
+  border: none;
+  background: transparent;
   min-width: 20px;
 }
 
-.todo-subtask-text:focus {
-  color: var(--text-normal);
-  border-bottom-color: var(--interactive-accent);
-}
-
 .todo-subtask-input {
-  width: 100%;
-  padding: 2px 0;
   font-size: 12px;
-  border: none;
-  border-bottom: 1px dashed transparent;
-  background: transparent;
   color: var(--text-muted);
   outline: none;
-}
-
-.todo-subtask-input:focus {
-  color: var(--text-normal);
-  border-bottom-color: var(--interactive-accent);
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  flex: 1;
 }
 
 .todo-subtask-input::placeholder {
   color: var(--text-faint);
 }
 
-/* -- version -- */
+/* version */
 
 .todo-panel-version {
   margin-top: 10px;
