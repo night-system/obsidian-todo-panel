@@ -27,6 +27,7 @@ interface TaskItem {
 
 class TodoPanelView extends ItemView {
   plugin: TodoPanelPlugin;
+  expandedPaths: Set<string> = new Set();
 
   constructor(leaf: WorkspaceLeaf, plugin: TodoPanelPlugin) {
     super(leaf);
@@ -49,9 +50,16 @@ class TodoPanelView extends ItemView {
     const list = container.createDiv("todo-panel-list");
     const cfg = this.plugin.taskNotesConfig;
 
+    if (tasks.length === 0) {
+      list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
+    }
+
     for (const task of tasks) {
-      const card = list.createDiv("todo-card");
-      card.addEventListener("click", () => {
+      const wrapper = list.createDiv("todo-card-wrapper");
+
+      // main row
+      const row = wrapper.createDiv("todo-card-row");
+      row.addEventListener("click", () => {
         const file = this.plugin.app.vault.getAbstractFileByPath(task.path);
         if (file instanceof TFile) {
           this.plugin.app.workspace.getLeaf(false).openFile(file);
@@ -59,27 +67,82 @@ class TodoPanelView extends ItemView {
       });
 
       // status icon
-      const iconEl = card.createSpan("todo-icon");
+      const iconEl = row.createSpan("todo-icon");
       const iconName = this.getStatusIcon(task.status, cfg);
       if (iconName) {
-        const lucideName = iconName.replace(/^lucide-/, "");
-        setIcon(iconEl, lucideName as any);
+        setIcon(iconEl, iconName.replace(/^lucide-/, "") as any);
       }
 
       // priority dot
-      const dot = card.createSpan("todo-priority-dot");
+      const dot = row.createSpan("todo-priority-dot");
       const priColor = this.getPriorityColor(task.priority, cfg);
       if (priColor) {
         dot.style.setProperty("--todo-pri-color", priColor);
       }
 
       // title
-      card.createSpan({ text: task.title, cls: "todo-title" });
+      row.createSpan({ text: task.title, cls: "todo-title" });
+
+      // chevron toggle
+      const isExpanded = this.expandedPaths.has(task.path);
+      const chevron = row.createSpan("todo-chevron");
+      setIcon(chevron, isExpanded ? "chevron-down" : "chevron-right");
+      chevron.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (this.expandedPaths.has(task.path)) {
+          this.expandedPaths.delete(task.path);
+        } else {
+          this.expandedPaths.add(task.path);
+        }
+        this.render();
+      });
+
+      // subtask area
+      if (isExpanded) {
+        const subEl = wrapper.createDiv("todo-subtask");
+        this.loadSubtaskContent(task.path, subEl);
+      }
     }
 
     container.createDiv("todo-panel-version").createSpan({
       text: `v${this.plugin.manifest.version}`,
     });
+  }
+
+  async loadSubtaskContent(path: string, el: HTMLElement) {
+    const file = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) return;
+
+    const content = await this.plugin.app.vault.cachedRead(file);
+    const lines = content.split("\n");
+    let firstSubtask: string | null = null;
+    for (const line of lines) {
+      const match = line.match(/^\s*- \[ \] (.+)/);
+      if (match) {
+        firstSubtask = match[1].trim();
+        break;
+      }
+    }
+
+    if (firstSubtask) {
+      el.createSpan({ text: firstSubtask, cls: "todo-subtask-text" });
+    } else {
+      const input = el.createEl("input", {
+        type: "text",
+        placeholder: "添加子任务...",
+        cls: "todo-subtask-input",
+      });
+      setTimeout(() => input.focus(), 0);
+      input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter" && input.value.trim()) {
+          const text = input.value.trim();
+          await this.plugin.app.vault.process(file as TFile, (data) => {
+            return data.trimEnd() + "\n- [ ] " + text + "\n";
+          });
+          this.render();
+        }
+      });
+    }
   }
 
   getStatusIcon(status: string, cfg: TaskNotesConfig | null): string | null {
