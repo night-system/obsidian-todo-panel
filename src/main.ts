@@ -197,7 +197,6 @@ export default class TodoPanelPlugin extends Plugin {
   async onload() {
     this.taskNotesConfig = await this.loadTaskNotesConfig();
     this.registerView(VIEW_TYPE_TODO_PANEL, (leaf) => new TodoPanelView(leaf, this));
-    this.addRibbonIcon("checkmark", "Open Todo Panel", () => this.activateView());
     this.addCommand({ id: "open-todo-panel", name: "Open Todo Panel", callback: () => this.activateView() });
     this.registerEvent(this.app.metadataCache.on("changed", () => this.refreshView()));
   }
@@ -216,7 +215,7 @@ export default class TodoPanelPlugin extends Plugin {
     let leaf: WorkspaceLeaf | null = null;
     const leaves = workspace.getLeavesOfType(VIEW_TYPE_TODO_PANEL);
     if (leaves.length > 0) { leaf = leaves[0]; }
-    else { leaf = workspace.getRightLeaf(false);
+    else { leaf = workspace.getLeftLeaf(false);
       if (leaf) await leaf.setViewState({ type: VIEW_TYPE_TODO_PANEL, active: true }); }
     if (leaf) workspace.revealLeaf(leaf);
   }
