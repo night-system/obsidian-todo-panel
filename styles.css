@@ -1,26 +1,13 @@
-/* Todo Panel Styles */
-
 .todo-panel-container {
-  padding: 12px;
+  padding: 8px 10px;
   height: 100%;
   overflow-y: auto;
 }
 
-.todo-panel-header {
+.todo-panel-list {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.todo-panel-header button {
-  padding: 2px 10px;
-  font-size: 12px;
-  cursor: pointer;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .todo-panel-empty {
@@ -30,16 +17,12 @@
   padding: 24px 0;
 }
 
-.todo-panel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .todo-card {
-  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
   border-radius: 6px;
-  border: 1px solid var(--background-modifier-border);
   cursor: pointer;
   transition: background-color 0.1s;
 }
@@ -48,35 +31,27 @@
   background-color: var(--background-modifier-hover);
 }
 
-.todo-card-top {
+.todo-icon {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
-.todo-priority {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.4;
-  text-transform: uppercase;
+.todo-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
-.todo-priority-a {
-  background-color: #e53e3e;
-  color: #fff;
-}
-
-.todo-priority-b {
-  background-color: #dd6b20;
-  color: #fff;
-}
-
-.todo-priority-c {
-  background-color: #38a169;
-  color: #fff;
+.todo-priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--todo-pri-color, var(--text-muted));
 }
 
 .todo-title {
@@ -86,18 +61,9 @@
   text-overflow: ellipsis;
 }
 
-.todo-card-bottom {
-  margin-top: 4px;
-}
-
-.todo-date {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
 .todo-panel-version {
-  margin-top: 12px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 6px;
   border-top: 1px solid var(--background-modifier-border);
   text-align: center;
 }

@@ -1,12 +1,28 @@
-import { Plugin, WorkspaceLeaf, ItemView, TFile } from "obsidian";
+import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon } from "obsidian";
 
 const VIEW_TYPE_TODO_PANEL = "todo-panel-view";
+
+interface PriorityDef {
+  value: string;
+  color: string;
+}
+
+interface StatusDef {
+  value: string;
+  icon: string;
+}
+
+interface TaskNotesConfig {
+  customPriorities?: PriorityDef[];
+  customStatuses?: StatusDef[];
+}
 
 interface TaskItem {
   title: string;
   priority: string;
   dateModified: string;
   path: string;
+  status: string;
 }
 
 class TodoPanelView extends ItemView {
@@ -17,22 +33,11 @@ class TodoPanelView extends ItemView {
     this.plugin = plugin;
   }
 
-  getViewType(): string {
-    return VIEW_TYPE_TODO_PANEL;
-  }
+  getViewType(): string { return VIEW_TYPE_TODO_PANEL; }
+  getDisplayText(): string { return "Todo Panel"; }
+  getIcon(): string { return "checkmark"; }
 
-  getDisplayText(): string {
-    return "Todo Panel";
-  }
-
-  getIcon(): string {
-    return "checkmark";
-  }
-
-  async onOpen() {
-    this.render();
-  }
-
+  async onOpen() { this.render(); }
   async onClose() {}
 
   render() {
@@ -42,40 +47,51 @@ class TodoPanelView extends ItemView {
 
     const tasks = this.collectTasks();
     const list = container.createDiv("todo-panel-list");
+    const cfg = this.plugin.taskNotesConfig;
 
-    if (tasks.length === 0) {
-      list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
-    } else {
-      for (const task of tasks) {
-        const card = list.createDiv("todo-card");
-        card.addEventListener("click", () => {
-          const file = this.plugin.app.vault.getAbstractFileByPath(task.path);
-          if (file instanceof TFile) {
-            this.plugin.app.workspace.getLeaf(false).openFile(file);
-          }
-        });
-
-        const topRow = card.createDiv("todo-card-top");
-        if (task.priority) {
-          topRow.createSpan({
-            text: task.priority,
-            cls: `todo-priority todo-priority-${task.priority.toLowerCase()}`,
-          });
+    for (const task of tasks) {
+      const card = list.createDiv("todo-card");
+      card.addEventListener("click", () => {
+        const file = this.plugin.app.vault.getAbstractFileByPath(task.path);
+        if (file instanceof TFile) {
+          this.plugin.app.workspace.getLeaf(false).openFile(file);
         }
-        topRow.createSpan({ text: task.title, cls: "todo-title" });
+      });
 
-        if (task.dateModified) {
-          card.createDiv("todo-card-bottom").createSpan({
-            text: this.formatDate(task.dateModified),
-            cls: "todo-date",
-          });
-        }
+      // status icon
+      const iconEl = card.createSpan("todo-icon");
+      const iconName = this.getStatusIcon(task.status, cfg);
+      if (iconName) {
+        const lucideName = iconName.replace(/^lucide-/, "");
+        setIcon(iconEl, lucideName as any);
       }
+
+      // priority dot
+      const dot = card.createSpan("todo-priority-dot");
+      const priColor = this.getPriorityColor(task.priority, cfg);
+      if (priColor) {
+        dot.style.setProperty("--todo-pri-color", priColor);
+      }
+
+      // title
+      card.createSpan({ text: task.title, cls: "todo-title" });
     }
 
     container.createDiv("todo-panel-version").createSpan({
       text: `v${this.plugin.manifest.version}`,
     });
+  }
+
+  getStatusIcon(status: string, cfg: TaskNotesConfig | null): string | null {
+    if (!cfg?.customStatuses) return null;
+    const found = cfg.customStatuses.find(s => s.value === status);
+    return found?.icon ?? null;
+  }
+
+  getPriorityColor(priority: string, cfg: TaskNotesConfig | null): string | null {
+    if (!cfg?.customPriorities) return null;
+    const found = cfg.customPriorities.find(p => p.value === priority);
+    return found?.color ?? null;
   }
 
   collectTasks(): TaskItem[] {
@@ -95,32 +111,25 @@ class TodoPanelView extends ItemView {
       const title = (fm.title as string) || file.basename;
       const priority = (fm.priority as string) || "";
       const dateModified = (fm.dateModified as string) || "";
+      const status = (fm.status as string) || "";
 
-      results.push({ title, priority, dateModified, path: file.path });
+      results.push({ title, priority, dateModified, path: file.path, status });
     }
 
     results.sort((a, b) => b.dateModified.localeCompare(a.dateModified));
     return results;
   }
-
-  formatDate(iso: string): string {
-    try {
-      const d = new Date(iso);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    } catch {
-      return iso;
-    }
-  }
 }
 
 export default class TodoPanelPlugin extends Plugin {
+  taskNotesConfig: TaskNotesConfig | null = null;
+
   async onload() {
+    this.taskNotesConfig = await this.loadTaskNotesConfig();
+
     this.registerView(VIEW_TYPE_TODO_PANEL, (leaf) => new TodoPanelView(leaf, this));
 
-    this.addRibbonIcon("checkmark", "Open Todo Panel", () => {
-      this.activateView();
-    });
+    this.addRibbonIcon("checkmark", "Open Todo Panel", () => this.activateView());
 
     this.addCommand({
       id: "open-todo-panel",
@@ -129,10 +138,20 @@ export default class TodoPanelPlugin extends Plugin {
     });
 
     this.registerEvent(
-      this.app.metadataCache.on("changed", () => {
-        this.refreshView();
-      })
+      this.app.metadataCache.on("changed", () => this.refreshView())
     );
+  }
+
+  async loadTaskNotesConfig(): Promise<TaskNotesConfig | null> {
+    try {
+      const adapter = this.app.vault.adapter;
+      const dataPath = ".obsidian/plugins/tasknotes/data.json";
+      if (!(await adapter.exists(dataPath))) return null;
+      const raw = await adapter.read(dataPath);
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   async activateView() {
@@ -149,17 +168,13 @@ export default class TodoPanelPlugin extends Plugin {
       }
     }
 
-    if (leaf) {
-      workspace.revealLeaf(leaf);
-    }
+    if (leaf) workspace.revealLeaf(leaf);
   }
 
   refreshView() {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TODO_PANEL);
     for (const leaf of leaves) {
-      if (leaf.view instanceof TodoPanelView) {
-        leaf.view.render();
-      }
+      if (leaf.view instanceof TodoPanelView) leaf.view.render();
     }
   }
 
