@@ -11,7 +11,7 @@ interface TaskNotesConfig {
 }
 interface TaskItem {
   title: string; priority: string; dateModified: string;
-  path: string; status: string;
+  path: string; status: string; subtaskCount: number;
 }
 
 class TodoPanelView extends ItemView {
@@ -28,13 +28,13 @@ class TodoPanelView extends ItemView {
   async onOpen() { this.render(); }
   async onClose() {}
 
-  render() {
+  async render() {
     const container = this.containerEl.children[1];
     const scrollTop = container.scrollTop;
     container.empty();
     container.addClass("todo-panel-container");
 
-    const tasks = this.collectTasks();
+    const tasks = await this.collectTasks();
     const list = container.createDiv("todo-panel-list");
     const cfg = this.plugin.taskNotesConfig;
 
@@ -59,9 +59,9 @@ class TodoPanelView extends ItemView {
       row.createSpan({ text: task.title, cls: "todo-title" });
 
       const isExpanded = this.expandedPaths.has(task.path);
-      const chevron = row.createSpan("todo-chevron");
-      setIcon(chevron, isExpanded ? "chevron-down" : "chevron-right");
-      chevron.addEventListener("click", (e) => {
+      const count = row.createSpan("todo-count");
+      count.setText(String(task.subtaskCount));
+      count.addEventListener("click", (e) => {
         e.stopPropagation();
         if (this.expandedPaths.has(task.path))
           this.expandedPaths.delete(task.path);
@@ -127,10 +127,6 @@ class TodoPanelView extends ItemView {
     span.setAttr("data-placeholder", "添加子任务");
     span.setText(text);
 
-    if (!hasTask) {
-      setTimeout(() => span.focus(), 0);
-    }
-
     let oldText = text;
     span.addEventListener("blur", async () => {
       const nt = span.getText().trim();
@@ -169,7 +165,7 @@ class TodoPanelView extends ItemView {
     return f?.color ?? null;
   }
 
-  collectTasks(): TaskItem[] {
+  async collectTasks(): Promise<TaskItem[]> {
     const r: TaskItem[] = [];
     for (const file of this.plugin.app.vault.getMarkdownFiles()) {
       const cache = this.plugin.app.metadataCache.getFileCache(file);
@@ -178,12 +174,18 @@ class TodoPanelView extends ItemView {
       if (fm.status !== "in-progress") continue;
       const tags: string[] = (fm.tags as string[]) || [];
       if (tags.includes("archived")) continue;
+      const content = await this.plugin.app.vault.cachedRead(file);
+      let count = 0;
+      for (const line of content.split("\n")) {
+        if (/^\s*- \[ \] .+/.test(line)) count++;
+      }
       r.push({
         title: (fm.title as string) || file.basename,
         priority: (fm.priority as string) || "",
         dateModified: (fm.dateModified as string) || "",
         path: file.path,
         status: (fm.status as string) || "",
+        subtaskCount: count,
       });
     }
     r.sort((a, b) => b.dateModified.localeCompare(a.dateModified));
