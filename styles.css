@@ -4,6 +4,29 @@
   overflow-y: auto;
 }
 
+.todo-indent-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.todo-indent-btn {
+  font-size: 11px;
+  padding: 1px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.todo-indent-btn.is-active {
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+}
+
 .todo-panel-list {
   display: flex;
   flex-direction: column;
@@ -75,11 +98,6 @@
   height: 16px;
 }
 
-.todo-subtask {
-  padding: 0;
-  padding-left: 44px;
-}
-
 .todo-subtask-row {
   display: flex;
   align-items: center;
@@ -102,8 +120,7 @@
   height: 14px;
 }
 
-.todo-subtask-text,
-.todo-subtask-input {
+.todo-subtask-text {
   font-size: 12px;
   line-height: 1.4;
   color: var(--text-muted);
@@ -113,22 +130,11 @@
   padding: 0;
   margin: 0;
   font-family: inherit;
-  height: 17px;
-}
-
-.todo-subtask-text {
   min-width: 20px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.todo-subtask-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.todo-subtask-input::placeholder {
+.todo-subtask-text:empty::before {
+  content: attr(data-placeholder);
   color: var(--text-faint);
 }
 

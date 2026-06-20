@@ -2,6 +2,8 @@ import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon } from "obsidian";
 
 const VIEW_TYPE_TODO_PANEL = "todo-panel-view";
 
+const INDENT_OPTIONS = [28, 32, 36, 40, 44, 48, 52];
+
 interface PriorityDef { value: string; color: string; }
 interface StatusDef { value: string; icon: string; }
 interface TaskNotesConfig {
@@ -32,6 +34,21 @@ class TodoPanelView extends ItemView {
     const scrollTop = container.scrollTop;
     container.empty();
     container.addClass("todo-panel-container");
+
+    // indent picker bar
+    const indentBar = container.createDiv("todo-indent-bar");
+    for (const v of INDENT_OPTIONS) {
+      const btn = indentBar.createEl("button", {
+        text: v + "px",
+        cls: "todo-indent-btn" + (v === this.plugin.subIndent ? " is-active" : ""),
+      });
+      btn.addEventListener("click", () => {
+        this.plugin.subIndent = v;
+        this.plugin.saveSettings();
+        this.render();
+      });
+    }
+
     const tasks = this.collectTasks();
     const list = container.createDiv("todo-panel-list");
     const cfg = this.plugin.taskNotesConfig;
@@ -70,6 +87,7 @@ class TodoPanelView extends ItemView {
 
       if (isExpanded) {
         const subEl = wrapper.createDiv("todo-subtask");
+        subEl.style.paddingLeft = this.plugin.subIndent + "px";
         this.buildSubtaskArea(subEl, task.path);
       }
     }
@@ -93,70 +111,68 @@ class TodoPanelView extends ItemView {
       const m = lines[i].match(/^\s*- \[ \] (.+)/);
       if (m) { idx = i; txt = m[1].trim(); break; }
     }
-    if (idx === -1) this.buildSubtaskInput(el, file);
-    else this.buildSubtaskRow(el, file, txt, idx);
+    this.buildSubtaskRow(el, file, idx === -1 ? "" : txt, idx);
   }
 
+  // single unified widget: circle + contenteditable span
   buildSubtaskRow(el: HTMLElement, file: TFile, text: string, lineIdx: number) {
     el.addClass("todo-subtask-row");
 
+    const hasTask = lineIdx >= 0;
+
     const cb = el.createSpan("todo-subtask-checkbox");
     setIcon(cb, "circle");
-    cb.addEventListener("click", async (e: Event) => {
-      e.stopPropagation();
-      cb.empty(); setIcon(cb, "check-circle"); cb.addClass("is-done");
-      await this.plugin.app.vault.process(file, (data: string) => {
-        const ls = data.split("\n");
-        if (lineIdx < ls.length)
-          ls[lineIdx] = ls[lineIdx].replace(/^(\s*- )\[ \]/, "$1[x]");
-        return ls.join("\n");
+
+    if (hasTask) {
+      cb.addEventListener("click", async (e: Event) => {
+        e.stopPropagation();
+        cb.empty(); setIcon(cb, "check-circle"); cb.addClass("is-done");
+        await this.plugin.app.vault.process(file, (data: string) => {
+          const ls = data.split("\n");
+          if (lineIdx < ls.length)
+            ls[lineIdx] = ls[lineIdx].replace(/^(\s*- )\[ \]/, "$1[x]");
+          return ls.join("\n");
+        });
+        setTimeout(async () => {
+          el.empty(); el.removeClass("todo-subtask-row");
+          await this.buildSubtaskArea(el, file.path);
+        }, 150);
       });
-      setTimeout(async () => {
-        el.empty(); el.removeClass("todo-subtask-row");
-        await this.buildSubtaskArea(el, file.path);
-      }, 150);
-    });
+    }
 
     const span = el.createSpan({ cls: "todo-subtask-text" });
     span.setAttr("contenteditable", "true");
+    span.setAttr("data-placeholder", "Add subtask...");
     span.setText(text);
+
+    if (!hasTask) {
+      setTimeout(() => span.focus(), 0);
+    }
+
     let oldText = text;
-
-    const sync = async () => {
+    span.addEventListener("blur", async () => {
       const nt = span.getText().trim();
-      if (!nt || nt === oldText) return;
-      await (file as TFile).vault.process(file, (data: string) => {
-        const ls = data.split("\n");
-        if (lineIdx < ls.length)
-          ls[lineIdx] = ls[lineIdx].replace(/(- \[ \] ).+/, "$1" + nt);
-        return ls.join("\n");
-      });
-      oldText = nt;
-    };
-    span.addEventListener("blur", () => { sync(); });
-    span.addEventListener("keydown", (e: KeyboardEvent) => {
-      if (e.key === "Enter") { e.preventDefault(); span.blur(); }
-    });
-  }
+      if (nt === oldText) return;
+      if (!nt) { oldText = ""; return; }
 
-  buildSubtaskInput(el: HTMLElement, file: TFile) {
-    el.addClass("todo-subtask-row");
-
-    const cb = el.createSpan("todo-subtask-checkbox");
-    setIcon(cb, "circle");
-
-    const input = el.createEl("input", {
-      type: "text", placeholder: "Add subtask...", cls: "todo-subtask-input",
-    });
-    setTimeout(() => input.focus(), 0);
-    input.addEventListener("keydown", async (e: KeyboardEvent) => {
-      if (e.key === "Enter" && input.value.trim()) {
-        const text = input.value.trim();
+      if (hasTask) {
+        await (file as TFile).vault.process(file, (data: string) => {
+          const ls = data.split("\n");
+          if (lineIdx < ls.length)
+            ls[lineIdx] = ls[lineIdx].replace(/(- \[ \] ).+/, "$1" + nt);
+          return ls.join("\n");
+        });
+      } else {
         await this.plugin.app.vault.process(file, (data: string) =>
-          data.trimEnd() + "\n- [ ] " + text + "\n");
+          data.trimEnd() + "\n- [ ] " + nt + "\n");
         el.empty(); el.removeClass("todo-subtask-row");
         await this.buildSubtaskArea(el, file.path);
       }
+      oldText = nt;
+    });
+
+    span.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter") { e.preventDefault(); span.blur(); }
     });
   }
 
@@ -195,13 +211,24 @@ class TodoPanelView extends ItemView {
 
 export default class TodoPanelPlugin extends Plugin {
   taskNotesConfig: TaskNotesConfig | null = null;
+  subIndent: number = 44;
 
   async onload() {
+    await this.loadSettings();
     this.taskNotesConfig = await this.loadTaskNotesConfig();
     this.registerView(VIEW_TYPE_TODO_PANEL, (leaf) => new TodoPanelView(leaf, this));
     this.addRibbonIcon("checkmark", "Open Todo Panel", () => this.activateView());
     this.addCommand({ id: "open-todo-panel", name: "Open Todo Panel", callback: () => this.activateView() });
     this.registerEvent(this.app.metadataCache.on("changed", () => this.refreshView()));
+  }
+
+  async loadSettings() {
+    const data = await this.loadData();
+    if (data?.subIndent) this.subIndent = data.subIndent;
+  }
+
+  async saveSettings() {
+    await this.saveData({ subIndent: this.subIndent });
   }
 
   async loadTaskNotesConfig(): Promise<TaskNotesConfig | null> {
