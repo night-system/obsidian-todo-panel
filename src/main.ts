@@ -211,6 +211,7 @@ export default class TodoPanelPlugin extends Plugin {
     this.registerView(VIEW_TYPE_TODO_PANEL, (leaf) => new TodoPanelView(leaf, this));
     this.addCommand({ id: "open-todo-panel", name: "Open Todo Panel", callback: () => this.activateView() });
     this.registerEvent(this.app.metadataCache.on("changed", () => this.refreshView()));
+    this.registerEvent(this.app.vault.on("delete", () => this.refreshView()));
   }
 
   async loadTaskNotesConfig(): Promise<TaskNotesConfig | null> {
