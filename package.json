@@ -1,6 +1,6 @@
 {
   "name": "obsidian-todo-panel",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Obsidian Todo Panel - task management plugin",
   "main": "main.js",
   "scripts": {

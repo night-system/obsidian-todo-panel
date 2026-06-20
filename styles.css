@@ -17,7 +17,7 @@
 
 .todo-panel-empty {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 15px;
   text-align: center;
   padding: 24px 0;
 }
@@ -59,7 +59,7 @@
 
 .todo-title {
   flex: 1;
-  font-size: 13px;
+  font-size: 15px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -103,7 +103,7 @@
 }
 
 .todo-subtask-text {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   color: var(--text-normal);
   outline: none;
@@ -118,6 +118,7 @@
 .todo-subtask-text:empty::before {
   content: attr(data-placeholder);
   color: var(--text-faint);
+  font-size: 12px;
 }
 
 .todo-panel-version {
