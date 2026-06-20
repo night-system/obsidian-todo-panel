@@ -50,8 +50,8 @@
 }
 
 .todo-priority-dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
   background-color: var(--todo-pri-color, var(--text-muted));
@@ -78,10 +78,6 @@
 .todo-chevron svg {
   width: 16px;
   height: 16px;
-}
-
-.todo-subtask {
-  padding-left: 26px;
 }
 
 .todo-subtask-row {

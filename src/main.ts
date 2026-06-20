@@ -72,6 +72,7 @@ class TodoPanelView extends ItemView {
 
       if (isExpanded) {
         const subEl = wrapper.createDiv("todo-subtask");
+        subEl.style.paddingLeft = "26px";
         this.buildSubtaskArea(subEl, task.path);
       }
     }
@@ -126,7 +127,7 @@ class TodoPanelView extends ItemView {
 
     const span = el.createSpan({ cls: "todo-subtask-text" });
     span.setAttr("contenteditable", "true");
-    span.setAttr("data-placeholder", "Add subtask...");
+    span.setAttr("data-placeholder", "添加子任务");
     span.setText(text);
 
     if (!hasTask) {
