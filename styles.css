@@ -67,18 +67,11 @@
 }
 
 .todo-count {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
   font-size: 11px;
-  line-height: 1;
   color: var(--text-muted);
-  background: var(--background-modifier-hover);
-  border-radius: 10px;
   flex-shrink: 0;
+  min-width: 16px;
+  text-align: center;
 }
 
 .todo-subtask-row {

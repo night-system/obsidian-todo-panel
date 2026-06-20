@@ -23,8 +23,8 @@ class TodoPanelView extends ItemView {
   }
 
   getViewType(): string { return VIEW_TYPE_TODO_PANEL; }
-  getDisplayText(): string { return "Todo Panel"; }
-  getIcon(): string { return "checkmark"; }
+  getDisplayText(): string { return "Todo"; }
+  getIcon(): string { return "git-pull-request"; }
   async onOpen() { this.render(); }
   async onClose() {}
 
