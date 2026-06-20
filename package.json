@@ -1,13 +1,17 @@
 {
   "name": "obsidian-todo-panel",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Obsidian Todo Panel - task management plugin",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
-  "keywords": ["obsidian", "plugin", "todo"],
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "todo"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {

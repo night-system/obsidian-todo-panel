@@ -94,3 +94,15 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+.todo-panel-version {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  text-align: center;
+}
+
+.todo-panel-version span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
