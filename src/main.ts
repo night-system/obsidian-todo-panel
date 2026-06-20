@@ -51,6 +51,14 @@ class TodoPanelView extends ItemView {
       const iconEl = row.createSpan("todo-icon");
       const iconName = this.getStatusIcon(task.status, cfg);
       if (iconName) setIcon(iconEl, iconName.replace(/^lucide-/, "") as any);
+      iconEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (this.expandedPaths.has(task.path))
+          this.expandedPaths.delete(task.path);
+        else
+          this.expandedPaths.add(task.path);
+        this.render();
+      });
 
       const dot = row.createSpan("todo-priority-dot");
       const priColor = this.getPriorityColor(task.priority, cfg);
