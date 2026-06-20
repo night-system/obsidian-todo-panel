@@ -2,7 +2,6 @@ import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon } from "obsidian";
 
 const VIEW_TYPE_TODO_PANEL = "todo-panel-view";
 
-const INDENT_OPTIONS = [28, 32, 36, 40, 44, 48, 52];
 
 interface PriorityDef { value: string; color: string; }
 interface StatusDef { value: string; icon: string; }
@@ -34,20 +33,6 @@ class TodoPanelView extends ItemView {
     const scrollTop = container.scrollTop;
     container.empty();
     container.addClass("todo-panel-container");
-
-    // indent picker bar
-    const indentBar = container.createDiv("todo-indent-bar");
-    for (const v of INDENT_OPTIONS) {
-      const btn = indentBar.createEl("button", {
-        text: v + "px",
-        cls: "todo-indent-btn" + (v === this.plugin.subIndent ? " is-active" : ""),
-      });
-      btn.addEventListener("click", () => {
-        this.plugin.subIndent = v;
-        this.plugin.saveSettings();
-        this.render();
-      });
-    }
 
     const tasks = this.collectTasks();
     const list = container.createDiv("todo-panel-list");
@@ -87,7 +72,6 @@ class TodoPanelView extends ItemView {
 
       if (isExpanded) {
         const subEl = wrapper.createDiv("todo-subtask");
-        subEl.style.paddingLeft = this.plugin.subIndent + "px";
         this.buildSubtaskArea(subEl, task.path);
       }
     }
@@ -211,24 +195,13 @@ class TodoPanelView extends ItemView {
 
 export default class TodoPanelPlugin extends Plugin {
   taskNotesConfig: TaskNotesConfig | null = null;
-  subIndent: number = 44;
 
   async onload() {
-    await this.loadSettings();
     this.taskNotesConfig = await this.loadTaskNotesConfig();
     this.registerView(VIEW_TYPE_TODO_PANEL, (leaf) => new TodoPanelView(leaf, this));
     this.addRibbonIcon("checkmark", "Open Todo Panel", () => this.activateView());
     this.addCommand({ id: "open-todo-panel", name: "Open Todo Panel", callback: () => this.activateView() });
     this.registerEvent(this.app.metadataCache.on("changed", () => this.refreshView()));
-  }
-
-  async loadSettings() {
-    const data = await this.loadData();
-    if (data?.subIndent) this.subIndent = data.subIndent;
-  }
-
-  async saveSettings() {
-    await this.saveData({ subIndent: this.subIndent });
   }
 
   async loadTaskNotesConfig(): Promise<TaskNotesConfig | null> {
