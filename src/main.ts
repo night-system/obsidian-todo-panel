@@ -196,7 +196,8 @@ class TodoPanelView extends ItemView {
     r.sort((a, b) => {
       const wa = this.getPriorityWeight(a.priority, this.plugin.taskNotesConfig);
       const wb = this.getPriorityWeight(b.priority, this.plugin.taskNotesConfig);
-      return wb - wa;
+      if (wa !== wb) return wb - wa;
+      return a.title.localeCompare(b.title);
     });
     return r;
   }
