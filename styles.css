@@ -32,19 +32,23 @@
   cursor: pointer;
 }
 
+.todo-reminder-row:first-child {
+  margin-top: 6px;
+}
+
 .todo-reminder-bell {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   color: var(--text-muted);
 }
 
 .todo-reminder-bell svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .todo-reminder-desc {
@@ -56,19 +60,21 @@
 }
 
 .todo-reminder-trash {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
+  font-size: 13px;
   color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 36px;
+  padding: 0 10px;
+  text-align: center;
   opacity: 0.4;
 }
 
 .todo-reminder-trash svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .todo-divider {

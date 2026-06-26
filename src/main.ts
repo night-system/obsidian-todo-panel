@@ -41,6 +41,7 @@ interface ReminderItem {
   description: string;
   path: string;
   notifyAt: number;
+  reminderId: string;
 }
 
 interface ReminderDef {
@@ -109,6 +110,11 @@ class TodoPanelView extends ItemView {
 
         const trash = row.createSpan("todo-reminder-trash");
         setIcon(trash, "trash-2");
+        trash.addEventListener("click", (e: Event) => {
+          e.stopPropagation();
+          this.plugin.deleteReminder(rem.path, rem.reminderId);
+          this.plugin.refreshView();
+        });
       }
       list.createDiv("todo-divider");
     }
@@ -431,6 +437,7 @@ export default class TodoPanelPlugin extends Plugin {
             description: rem.description || ((fm.title as string) || file.basename),
             path: file.path,
             notifyAt,
+            reminderId: rem.id,
           });
         }
       }
@@ -457,6 +464,17 @@ export default class TodoPanelPlugin extends Plugin {
     else { leaf = workspace.getLeftLeaf(false);
       if (leaf) await leaf.setViewState({ type: VIEW_TYPE_TODO_PANEL, active: true }); }
     if (leaf) workspace.revealLeaf(leaf);
+  }
+
+  async deleteReminder(filePath: string, reminderId: string) {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return;
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, any>) => {
+      const rems = fm.reminders || [];
+      if (Array.isArray(rems)) {
+        fm.reminders = rems.filter((r: any) => r.id !== reminderId);
+      }
+    });
   }
 
   refreshView() {
