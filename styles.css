@@ -22,7 +22,7 @@
   padding: 24px 0;
 }
 
-/* reminder */
+/* reminder parent row */
 
 .todo-reminder-row {
   display: flex;
@@ -30,10 +30,6 @@
   gap: 8px;
   padding: 6px 4px;
   cursor: pointer;
-}
-
-.todo-reminder-row:first-child {
-  margin-top: 6px;
 }
 
 .todo-reminder-bell {
@@ -51,7 +47,7 @@
   height: 14px;
 }
 
-.todo-reminder-desc {
+.todo-reminder-task-name {
   flex: 1;
   font-size: 15px;
   white-space: nowrap;
@@ -59,7 +55,7 @@
   text-overflow: ellipsis;
 }
 
-.todo-reminder-trash {
+.todo-reminder-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -69,12 +65,6 @@
   min-width: 36px;
   padding: 0 10px;
   text-align: center;
-  opacity: 0.4;
-}
-
-.todo-reminder-trash svg {
-  width: 14px;
-  height: 14px;
 }
 
 .todo-divider {

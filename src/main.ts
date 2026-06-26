@@ -23,25 +23,51 @@ function parseISO8601Duration(dur: string): number {
   const datePart = tIdx >= 0 ? s.slice(1, tIdx) : s.slice(1);
   const timePart = tIdx >= 0 ? s.slice(tIdx + 1) : "";
 
-  const dMatch = datePart.match(/(\\d+)D/);
+  const dMatch = datePart.match(/(\d+)D/);
   if (dMatch) ms += parseInt(dMatch[1]) * 86400000;
 
-  const hMatch = timePart.match(/(\\d+)H/);
+  const hMatch = timePart.match(/(\d+)H/);
   if (hMatch) ms += parseInt(hMatch[1]) * 3600000;
-  const mMatch = timePart.match(/(\\d+)M/);
+  const mMatch = timePart.match(/(\d+)M/);
   if (mMatch) ms += parseInt(mMatch[1]) * 60000;
-  const sMatch = timePart.match(/(\\d+)S/);
+  const sMatch = timePart.match(/(\d+)S/);
   if (sMatch) ms += parseInt(sMatch[1]) * 1000;
 
   return neg ? -ms : ms;
 }
 
-interface ReminderItem {
-  title: string;
+function pad(n: number): string { return String(n).padStart(2, "0"); }
+
+function calcDateDistance(due: string | undefined, scheduled: string | undefined): string {
+  const now = new Date();
+  const today = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+  let earliest: string | null = null;
+  const d1 = due ? new Date(due) : null;
+  const d2 = scheduled ? new Date(scheduled) : null;
+  if (d1 && d2) earliest = d1 <= d2 ? due! : scheduled!;
+  else if (d1) earliest = due!;
+  else if (d2) earliest = scheduled!;
+  else return "";
+
+  const target = new Date(earliest!);
+  const todayDate = new Date(today + "T00:00:00");
+  const diffDays = Math.ceil((target.getTime() - todayDate.getTime()) / 86400000);
+
+  if (diffDays < 1) return "1d-";
+  if (diffDays > 6) return "5d+";
+  return diffDays + "d";
+}
+
+interface DueReminder {
+  id: string;
   description: string;
+}
+
+interface ReminderGroup {
+  taskTitle: string;
   path: string;
-  notifyAt: number;
-  reminderId: string;
+  dateDistance: string;
+  dueReminders: DueReminder[];
 }
 
 interface ReminderDef {
@@ -93,32 +119,70 @@ class TodoPanelView extends ItemView {
     const list = container.createDiv("todo-panel-list");
     const cfg = this.plugin.taskNotesConfig;
 
-    if (reminders.length > 0) {
-      for (const rem of reminders) {
-        const row = list.createDiv("todo-reminder-row");
-        row.addEventListener("click", () => {
-          const file = this.plugin.app.vault.getAbstractFileByPath(rem.path);
-          if (file instanceof TFile) {
-            this.plugin.app.workspace.getLeaf(false).openFile(file);
-          }
-        });
+    // ---- reminders ----
+    for (const rem of reminders) {
+      const wrapper = list.createDiv("todo-card-wrapper");
+      const row = wrapper.createDiv("todo-reminder-row");
 
-        const bell = row.createSpan("todo-reminder-bell");
-        setIcon(bell, "bell");
+      // bell icon
+      const bell = row.createSpan("todo-reminder-bell");
+      setIcon(bell, "bell");
 
-        row.createSpan({ text: rem.description || rem.title, cls: "todo-reminder-desc" });
+      // task title
+      row.createSpan({ text: rem.taskTitle, cls: "todo-reminder-task-name" });
 
-        const trash = row.createSpan("todo-reminder-trash");
-        setIcon(trash, "trash-2");
-        trash.addEventListener("click", (e: Event) => {
-          e.stopPropagation();
-          this.plugin.deleteReminder(rem.path, rem.reminderId);
-          this.plugin.refreshView();
-        });
+      // date distance badge
+      const badge = row.createSpan("todo-reminder-badge");
+      badge.setText(rem.dateDistance);
+
+      // click bell/badge → toggle expand
+      const pathKey = "rem-" + rem.path;
+      const toggleExpand = (e: Event) => {
+        e.stopPropagation();
+        if (this.expandedPaths.has(pathKey))
+          this.expandedPaths.delete(pathKey);
+        else
+          this.expandedPaths.add(pathKey);
+        this.render();
+      };
+      bell.addEventListener("click", toggleExpand);
+      badge.addEventListener("click", toggleExpand);
+
+      // click title → open file
+      row.addEventListener("click", () => {
+        const file = this.plugin.app.vault.getAbstractFileByPath(rem.path);
+        if (file instanceof TFile) {
+          this.plugin.app.workspace.getLeaf(false).openFile(file);
+        }
+      });
+      // remove row listener for bell/badge area
+      // actually stopPropagation already handles it
+
+      // expanded children
+      if (this.expandedPaths.has(pathKey)) {
+        for (const dr of rem.dueReminders) {
+          const subRow = wrapper.createDiv("todo-subtask");
+          subRow.style.paddingLeft = "25.5px";
+          const sr = subRow.createDiv("todo-subtask-row");
+
+          const cb = sr.createSpan("todo-subtask-checkbox");
+          setIcon(cb, "circle");
+          cb.addEventListener("click", async (e: Event) => {
+            e.stopPropagation();
+            await this.plugin.deleteReminder(rem.path, dr.id);
+            this.plugin.refreshView();
+          });
+
+          sr.createSpan({ text: dr.description, cls: "todo-subtask-text" });
+        }
       }
+    }
+
+    if (reminders.length > 0) {
       list.createDiv("todo-divider");
     }
 
+    // ---- tasks ----
     for (const task of tasks) {
       const wrapper = list.createDiv("todo-card-wrapper");
       const row = wrapper.createDiv("todo-card-row");
@@ -150,7 +214,7 @@ class TodoPanelView extends ItemView {
       const isExpanded = this.expandedPaths.has(task.path);
       const count = row.createSpan("todo-count");
       if (task.isRecurring) {
-        count.setText("\\u21BB");
+        count.setText("↻");
       } else {
         count.setText(String(task.subtaskCount));
       }
@@ -188,10 +252,10 @@ class TodoPanelView extends ItemView {
     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
     if (!(file instanceof TFile)) return;
     const content = await this.plugin.app.vault.cachedRead(file);
-    const lines = content.split("\\n");
+    const lines = content.split("\n");
     let idx = -1, txt = "";
     for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].match(/^\\s*- \[ \] (.+)/);
+      const m = lines[i].match(/^\s*- \[ \] (.+)/);
       if (m) { idx = i; txt = m[1].trim(); break; }
     }
     this.buildSubtaskRow(el, file, idx === -1 ? "" : txt, idx);
@@ -209,10 +273,10 @@ class TodoPanelView extends ItemView {
         e.stopPropagation();
         cb.empty(); setIcon(cb, "check-circle"); cb.addClass("is-done");
         await this.plugin.app.vault.process(file, (data: string) => {
-          const ls = data.split("\\n");
+          const ls = data.split("\n");
           if (lineIdx < ls.length)
-            ls[lineIdx] = ls[lineIdx].replace(/^(\\s*- )\[ \]/, "$1[x]");
-          return ls.join("\\n");
+            ls[lineIdx] = ls[lineIdx].replace(/^(\s*- )\[ \]/, "$1[x]");
+          return ls.join("\n");
         });
         setTimeout(async () => {
           el.empty(); el.removeClass("todo-subtask-row");
@@ -223,7 +287,7 @@ class TodoPanelView extends ItemView {
 
     const span = el.createSpan({ cls: "todo-subtask-text" });
     span.setAttr("contenteditable", "true");
-    span.setAttr("data-placeholder", "\\u6DFB\\u52A0\\u5B50\\u4EFB\\u52A1");
+    span.setAttr("data-placeholder", "添加子任务");
     span.setText(text);
 
     let oldText = text;
@@ -233,14 +297,14 @@ class TodoPanelView extends ItemView {
       if (!nt) { oldText = ""; return; }
       if (hasTask) {
         await (file as TFile).vault.process(file, (data: string) => {
-          const ls = data.split("\\n");
+          const ls = data.split("\n");
           if (lineIdx < ls.length)
             ls[lineIdx] = ls[lineIdx].replace(/(- \[ \] ).+/, "$1" + nt);
-          return ls.join("\\n");
+          return ls.join("\n");
         });
       } else {
         await this.plugin.app.vault.process(file, (data: string) =>
-          data.trimEnd() + "\\n- [ ] " + nt + "\\n");
+          data.trimEnd() + "\n- [ ] " + nt + "\n");
         el.empty(); el.removeClass("todo-subtask-row");
         await this.buildSubtaskArea(el, file.path);
       }
@@ -276,30 +340,30 @@ class TodoPanelView extends ItemView {
         el.empty();
       }, 150);
     });
-    el.createSpan({ text: "\\u4ECA\\u65E5\\u4EFB\\u52A1\\u5B8C\\u6210", cls: "todo-subtask-text" });
+    el.createSpan({ text: "今日任务完成", cls: "todo-subtask-text" });
   }
 
   async completeRecurringInstance(filePath: string) {
     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
     if (!(file instanceof TFile)) return;
     const raw = await this.plugin.app.vault.read(file);
-    const fmMatch = raw.match(/^---\\n([\\s\\S]*?)\\n---/);
+    const fmMatch = raw.match(/^---\n([\s\S]*?)\n---/);
     if (!fmMatch) return;
     const fmText = fmMatch[1];
     const body = raw.slice(fmMatch[0].length);
     const today = new Date();
     const dateStr = todayStr();
-    const lines = fmText.split("\\n");
+    const lines = fmText.split("\n");
     const parsed: Record<string, any> = {};
     let currentKey = "";
     for (const line of lines) {
-      const kv = line.match(/^(\\S[\\w-]*?):\\s*(.*)/);
+      const kv = line.match(/^(\S[\w-]*?):\s*(.*)/);
       if (kv) {
         currentKey = kv[1];
         const val = kv[2].trim();
         parsed[currentKey] = (val === "" || val === "[]") ? [] : val;
       } else {
-        const li = line.match(/^\\s+-\\s+(.+)/);
+        const li = line.match(/^\s+-\s+(.+)/);
         if (li && currentKey && Array.isArray(parsed[currentKey]))
           parsed[currentKey].push(li[1].trim());
       }
@@ -339,7 +403,7 @@ class TodoPanelView extends ItemView {
         for (const item of parsed[k]) out.push("  - " + item);
       }
     }
-    await this.plugin.app.vault.modify(file, "---\\n" + out.join("\\n") + "\\n---" + body);
+    await this.plugin.app.vault.modify(file, "---\n" + out.join("\n") + "\n---" + body);
   }
 
   getStatusIcon(status: string, cfg: TaskNotesConfig | null): string | null {
@@ -374,8 +438,8 @@ class TodoPanelView extends ItemView {
       }
       const content = await this.plugin.app.vault.cachedRead(file);
       let count = 0;
-      for (const line of content.split("\\n")) {
-        if (/^\\s*- \[ \] .+/.test(line)) count++;
+      for (const line of content.split("\n")) {
+        if (/^\s*- \[ \] .+/.test(line)) count++;
       }
       r.push({
         title: (fm.title as string) || file.basename,
@@ -408,9 +472,9 @@ export default class TodoPanelPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("delete", () => this.refreshView()));
   }
 
-  getDueReminders(): ReminderItem[] {
+  getDueReminders(): ReminderGroup[] {
     const now = Date.now();
-    const items: ReminderItem[] = [];
+    const groupMap = new Map<string, ReminderGroup>();
 
     for (const file of this.app.vault.getMarkdownFiles()) {
       const cache = this.app.metadataCache.getFileCache(file);
@@ -418,6 +482,20 @@ export default class TodoPanelPlugin extends Plugin {
       const fm = cache.frontmatter as Record<string, unknown>;
       const rems = fm.reminders;
       if (!Array.isArray(rems) || rems.length === 0) continue;
+
+      let key = file.path;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          taskTitle: ((fm.title as string) || file.basename),
+          path: file.path,
+          dateDistance: calcDateDistance(
+            fm.due as string | undefined,
+            fm.scheduled as string | undefined
+          ),
+          dueReminders: [],
+        });
+      }
+      const group = groupMap.get(key)!;
 
       for (const rem of rems as ReminderDef[]) {
         let notifyAt = 0;
@@ -432,19 +510,31 @@ export default class TodoPanelPlugin extends Plugin {
         }
 
         if (notifyAt > 0 && notifyAt <= now) {
-          items.push({
-            title: ((fm.title as string) || file.basename),
-            description: rem.description || ((fm.title as string) || file.basename),
-            path: file.path,
-            notifyAt,
-            reminderId: rem.id,
+          group.dueReminders.push({
+            id: rem.id,
+            description: rem.description || group.taskTitle,
           });
         }
       }
     }
 
-    items.sort((a, b) => a.notifyAt - b.notifyAt);
+    const items: ReminderGroup[] = [];
+    for (const g of groupMap.values()) {
+      if (g.dueReminders.length > 0) items.push(g);
+    }
     return items;
+  }
+
+  async deleteReminder(filePath: string, reminderId: string) {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return;
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, any>) => {
+      const rems = fm.reminders || [];
+      if (Array.isArray(rems)) {
+        fm.reminders = rems.filter((r: any) => r.id !== reminderId);
+        if (fm.reminders.length === 0) delete fm.reminders;
+      }
+    });
   }
 
   async loadTaskNotesConfig(): Promise<TaskNotesConfig | null> {
@@ -464,17 +554,6 @@ export default class TodoPanelPlugin extends Plugin {
     else { leaf = workspace.getLeftLeaf(false);
       if (leaf) await leaf.setViewState({ type: VIEW_TYPE_TODO_PANEL, active: true }); }
     if (leaf) workspace.revealLeaf(leaf);
-  }
-
-  async deleteReminder(filePath: string, reminderId: string) {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!(file instanceof TFile)) return;
-    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, any>) => {
-      const rems = fm.reminders || [];
-      if (Array.isArray(rems)) {
-        fm.reminders = rems.filter((r: any) => r.id !== reminderId);
-      }
-    });
   }
 
   refreshView() {
