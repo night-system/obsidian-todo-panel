@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon } from "obsidian";
+import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon, Notice } from "obsidian";
 import { RRule, RRuleSet, rrulestr } from "rrule";
 
 function dateStrToDate(s: string): Date {
@@ -384,6 +384,7 @@ export default class TodoPanelPlugin extends Plugin {
   }
 
   refreshView() {
+    new Notice("已刷新");
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_TODO_PANEL))
       if (leaf.view instanceof TodoPanelView) leaf.view.render();
   }
