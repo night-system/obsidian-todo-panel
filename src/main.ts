@@ -1,4 +1,9 @@
 import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon } from "obsidian";
+import { RRule, RRuleSet, rrulestr } from "rrule";
+
+function dateStrToDate(s: string): Date {
+  return new Date(s + "T00:00:00");
+}
 
 const VIEW_TYPE_TODO_PANEL = "todo-panel-view";
 
@@ -12,6 +17,7 @@ interface TaskNotesConfig {
 interface TaskItem {
   title: string; priority: string; dateModified: string;
   path: string; status: string; subtaskCount: number;
+  isRecurring: boolean;
 }
 
 class TodoPanelView extends ItemView {
@@ -68,7 +74,11 @@ class TodoPanelView extends ItemView {
 
       const isExpanded = this.expandedPaths.has(task.path);
       const count = row.createSpan("todo-count");
-      count.setText(String(task.subtaskCount));
+      if (task.isRecurring) {
+        count.setText("↻");
+      } else {
+        count.setText(String(task.subtaskCount));
+      }
       count.addEventListener("click", (e) => {
         e.stopPropagation();
         if (this.expandedPaths.has(task.path))
@@ -81,7 +91,11 @@ class TodoPanelView extends ItemView {
       if (isExpanded) {
         const subEl = wrapper.createDiv("todo-subtask");
         subEl.style.paddingLeft = "25.5px";
-        this.buildSubtaskArea(subEl, task.path);
+        if (task.isRecurring) {
+          this.buildRecurringCompleteRow(subEl, task.path);
+        } else {
+          this.buildSubtaskArea(subEl, task.path);
+        }
       }
     }
 
@@ -89,6 +103,10 @@ class TodoPanelView extends ItemView {
       list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
 
     container.scrollTop = scrollTop;
+
+    container.createDiv("todo-panel-version").createSpan({
+      text: "v" + this.plugin.manifest.version,
+    });
   }
 
   async buildSubtaskArea(el: HTMLElement, filePath: string) {
@@ -162,6 +180,122 @@ class TodoPanelView extends ItemView {
     });
   }
 
+  // recurring task completion
+  buildRecurringCompleteRow(el: HTMLElement, filePath: string) {
+    el.addClass("todo-subtask-row");
+
+    const cb = el.createSpan("todo-subtask-checkbox");
+    setIcon(cb, "circle");
+    cb.addEventListener("click", async (e: Event) => {
+      e.stopPropagation();
+      cb.empty(); setIcon(cb, "check-circle"); cb.addClass("is-done");
+      await this.completeRecurringInstance(filePath);
+      setTimeout(async () => {
+        el.empty(); el.removeClass("todo-subtask-row");
+        const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+        if (file instanceof TFile) {
+          const cache = this.plugin.app.metadataCache.getFileCache(file);
+          if (cache?.frontmatter) {
+            const fm = cache.frontmatter as Record<string, unknown>;
+            if (fm.recurrence) {
+              this.buildRecurringCompleteRow(el, filePath);
+              return;
+            }
+          }
+        }
+        el.empty();
+      }, 150);
+    });
+
+    el.createSpan({ text: "今日任务完成", cls: "todo-subtask-text" });
+  }
+
+  async completeRecurringInstance(filePath: string) {
+    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return;
+
+    const raw = await this.plugin.app.vault.read(file);
+    const fmMatch = raw.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) return;
+
+    const fmText = fmMatch[1];
+    const body = raw.slice(fmMatch[0].length);
+    const today = new Date();
+    const dateStr = today.toISOString().slice(0, 10);
+
+    // Parse lines
+    const lines = fmText.split("\n");
+    const parsed: Record<string, any> = {};
+    let currentKey = "";
+    for (const line of lines) {
+      const kv = line.match(/^(\S[\w-]*?):\s*(.*)/);
+      if (kv) {
+        currentKey = kv[1];
+        const val = kv[2].trim();
+        if (val === "" || val === "[]") {
+          parsed[currentKey] = [];
+        } else {
+          parsed[currentKey] = val;
+        }
+      } else {
+        const li = line.match(/^\s+-\s+(.+)/);
+        if (li && currentKey && Array.isArray(parsed[currentKey])) {
+          parsed[currentKey].push(li[1].trim());
+        }
+      }
+    }
+
+    // Add today to complete_instances
+    const ci: string[] = Array.isArray(parsed.complete_instances) ? [...parsed.complete_instances] : [];
+    if (!ci.includes(dateStr)) ci.push(dateStr);
+
+    // Advance scheduled/due via rrule
+    const ruleStr = typeof parsed.recurrence === "string" ? parsed.recurrence : "";
+    let newScheduled = "";
+    let newDue = "";
+    if (ruleStr) {
+      try {
+        const startDate = parsed.scheduled
+          ? new Date(parsed.scheduled as string)
+          : today;
+        const opts = RRule.parseString(ruleStr);
+        opts.dtstart = startDate;
+        const rule = new RRule(opts);
+        const next = rule.after(dateStrToDate(dateStr), true);
+        if (next) {
+          newScheduled = next.toISOString().slice(0, 10);
+        }
+      } catch {}
+    }
+
+    const oldScheduled = typeof parsed.scheduled === "string" ? parsed.scheduled.slice(0, 10) : "";
+    const oldDue = typeof parsed.due === "string" ? parsed.due.slice(0, 10) : "";
+
+    // Rebuild YAML
+    const out: string[] = [];
+    const keys = Object.keys(parsed);
+    for (const k of keys) {
+      if (k === "complete_instances") {
+        out.push("complete_instances:");
+        for (const d of ci) out.push("  - " + d);
+      } else if (k === "scheduled" && newScheduled) {
+        out.push("scheduled: " + newScheduled);
+      } else if (k === "due" && newScheduled && oldDue === oldScheduled) {
+        out.push("due: " + newScheduled);
+      } else if (k === "dateModified") {
+        out.push("dateModified: " + today.toISOString());
+      } else if (typeof parsed[k] === "string") {
+        out.push(k + ": " + parsed[k]);
+      } else if (Array.isArray(parsed[k]) && k !== "complete_instances") {
+        out.push(k + ":");
+        for (const item of parsed[k]) out.push("  - " + item);
+      }
+    }
+
+    const newFm = "---\n" + out.join("\n") + "\n---";
+    await this.plugin.app.vault.modify(file, newFm + body);
+  }
+
   getStatusIcon(status: string, cfg: TaskNotesConfig | null): string | null {
     if (!cfg?.customStatuses) return null;
     const f = cfg.customStatuses.find(s => s.value === status);
@@ -199,6 +333,7 @@ class TodoPanelView extends ItemView {
         path: file.path,
         status: (fm.status as string) || "",
         subtaskCount: count,
+        isRecurring: !!(fm.recurrence as string),
       });
     }
     r.sort((a, b) => {
