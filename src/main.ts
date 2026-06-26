@@ -1,8 +1,17 @@
-import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon, Notice } from "obsidian";
-import { RRule, RRuleSet, rrulestr } from "rrule";
+import { Plugin, WorkspaceLeaf, ItemView, TFile, setIcon } from "obsidian";
+import { RRule } from "rrule";
 
-function dateStrToDate(s: string): Date {
-  return new Date(s + "T00:00:00");
+function todayStr(): string {
+  const d = new Date();
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+}
+
+function todayStrDate(d: Date): string {
+  return d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
 }
 
 const VIEW_TYPE_TODO_PANEL = "todo-panel-view";
@@ -41,27 +50,6 @@ class TodoPanelView extends ItemView {
     container.addClass("todo-panel-container");
 
     const tasks = await this.collectTasks();
-
-    // ---- debug: show ALL recurring tasks with display status ----
-    const debugDiv = container.createDiv("todo-debug");
-    const todayStr2 = new Date().toISOString().slice(0, 10);
-    for (const file of this.plugin.app.vault.getMarkdownFiles()) {
-      const cache = this.plugin.app.metadataCache.getFileCache(file);
-      if (!cache?.frontmatter) continue;
-      const fm = cache.frontmatter as Record<string, unknown>;
-      if (!fm.recurrence) continue;
-      const ci = Array.isArray(fm.complete_instances) ? fm.complete_instances : [];
-      const title = (fm.title as string) || file.basename;
-      const status = fm.status || "";
-      const tags = (fm.tags as string[]) || [];
-      let reason = "";
-      if (status !== "in-progress") reason = "[SKIP: status=" + status + "]";
-      else if (tags.includes("archived")) reason = "[SKIP: archived]";
-      else if (ci.includes(todayStr2)) reason = "[HIDE: complete_instances has today=" + todayStr2 + "]";
-      else reason = "[SHOWN]";
-      debugDiv.createDiv({ text: title + ": ci=" + JSON.stringify(ci) + " " + reason });
-    }
-    // -----------------------------------------------------------
 
     const list = container.createDiv("todo-panel-list");
     const cfg = this.plugin.taskNotesConfig;
@@ -243,7 +231,7 @@ class TodoPanelView extends ItemView {
     const fmText = fmMatch[1];
     const body = raw.slice(fmMatch[0].length);
     const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10);
+    const dateStr = todayStr();
 
     // Parse lines
     const lines = fmText.split("\n");
@@ -283,9 +271,10 @@ class TodoPanelView extends ItemView {
         const opts = RRule.parseString(ruleStr);
         opts.dtstart = startDate;
         const rule = new RRule(opts);
-        const next = rule.after(dateStrToDate(dateStr), true);
+        const dateLocal = new Date(dateStr + "T00:00:00");
+        const next = rule.after(dateLocal, true);
         if (next) {
-          newScheduled = next.toISOString().slice(0, 10);
+          newScheduled = todayStrDate(next);
         }
       } catch {}
     }
@@ -336,7 +325,7 @@ class TodoPanelView extends ItemView {
 
   async collectTasks(): Promise<TaskItem[]> {
     const r: TaskItem[] = [];
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     for (const file of this.plugin.app.vault.getMarkdownFiles()) {
       const cache = this.plugin.app.metadataCache.getFileCache(file);
       if (!cache?.frontmatter) continue;
@@ -348,7 +337,7 @@ class TodoPanelView extends ItemView {
         const ci: string[] = Array.isArray(fm.complete_instances)
           ? (fm.complete_instances as string[])
           : [];
-        if (ci.includes(todayStr)) continue;
+        if (ci.includes(today)) continue;
       }
       const content = await this.plugin.app.vault.cachedRead(file);
       let count = 0;
