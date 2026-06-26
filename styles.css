@@ -22,6 +22,63 @@
   padding: 24px 0;
 }
 
+/* reminder */
+
+.todo-reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+.todo-reminder-bell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.todo-reminder-bell svg {
+  width: 16px;
+  height: 16px;
+}
+
+.todo-reminder-desc {
+  flex: 1;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-reminder-trash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.todo-reminder-trash svg {
+  width: 16px;
+  height: 16px;
+}
+
+.todo-divider {
+  height: 1px;
+  background: var(--background-modifier-border);
+  margin: 6px 0;
+}
+
+/* task card */
+
 .todo-card-wrapper {
   display: flex;
   flex-direction: column;
@@ -119,5 +176,14 @@
   font-size: 12px;
 }
 
+.todo-panel-version {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--background-modifier-border);
+  text-align: center;
+}
 
-
+.todo-panel-version span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
