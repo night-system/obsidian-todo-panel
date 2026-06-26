@@ -242,10 +242,6 @@ class TodoPanelView extends ItemView {
       list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
 
     container.scrollTop = scrollTop;
-
-    container.createDiv("todo-panel-version").createSpan({
-      text: "v" + this.plugin.manifest.version,
-    });
   }
 
   async buildSubtaskArea(el: HTMLElement, filePath: string) {
