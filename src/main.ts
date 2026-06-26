@@ -42,7 +42,7 @@ class TodoPanelView extends ItemView {
 
     const tasks = await this.collectTasks();
 
-    // ---- debug: show all recurring task complete_instances ----
+    // ---- debug: show ALL recurring tasks with display status ----
     const debugDiv = container.createDiv("todo-debug");
     const todayStr2 = new Date().toISOString().slice(0, 10);
     for (const file of this.plugin.app.vault.getMarkdownFiles()) {
@@ -52,8 +52,14 @@ class TodoPanelView extends ItemView {
       if (!fm.recurrence) continue;
       const ci = Array.isArray(fm.complete_instances) ? fm.complete_instances : [];
       const title = (fm.title as string) || file.basename;
-      const hidden = ci.includes(todayStr2) ? " [HIDDEN]" : " [SHOWN]";
-      debugDiv.createDiv({ text: title + ": " + JSON.stringify(ci) + hidden });
+      const status = fm.status || "";
+      const tags = (fm.tags as string[]) || [];
+      let reason = "";
+      if (status !== "in-progress") reason = "[SKIP: status=" + status + "]";
+      else if (tags.includes("archived")) reason = "[SKIP: archived]";
+      else if (ci.includes(todayStr2)) reason = "[HIDE: complete_instances has today=" + todayStr2 + "]";
+      else reason = "[SHOWN]";
+      debugDiv.createDiv({ text: title + ": ci=" + JSON.stringify(ci) + " " + reason });
     }
     // -----------------------------------------------------------
 
