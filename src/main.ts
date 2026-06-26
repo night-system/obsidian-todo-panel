@@ -53,9 +53,9 @@ function calcDateDistance(due: string | undefined, scheduled: string | undefined
   const todayDate = new Date(today + "T00:00:00");
   const diffDays = Math.ceil((target.getTime() - todayDate.getTime()) / 86400000);
 
-  if (diffDays < 1) return "1d-";
-  if (diffDays > 6) return "5d+";
-  return diffDays + "d";
+  if (diffDays < 1) return "1day-";
+  if (diffDays > 6) return "5day+";
+  return diffDays + "day";
 }
 
 interface DueReminder {
