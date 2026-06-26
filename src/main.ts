@@ -314,6 +314,7 @@ class TodoPanelView extends ItemView {
 
   async collectTasks(): Promise<TaskItem[]> {
     const r: TaskItem[] = [];
+    const todayStr = new Date().toISOString().slice(0, 10);
     for (const file of this.plugin.app.vault.getMarkdownFiles()) {
       const cache = this.plugin.app.metadataCache.getFileCache(file);
       if (!cache?.frontmatter) continue;
@@ -321,6 +322,12 @@ class TodoPanelView extends ItemView {
       if (fm.status !== "in-progress") continue;
       const tags: string[] = (fm.tags as string[]) || [];
       if (tags.includes("archived")) continue;
+      if (fm.recurrence) {
+        const ci: string[] = Array.isArray(fm.complete_instances)
+          ? (fm.complete_instances as string[])
+          : [];
+        if (ci.includes(todayStr)) continue;
+      }
       const content = await this.plugin.app.vault.cachedRead(file);
       let count = 0;
       for (const line of content.split("\n")) {
