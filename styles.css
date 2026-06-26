@@ -187,3 +187,20 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+
+.todo-reminder-debug-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+.todo-reminder-debug-desc {
+  flex: 1;
+  font-size: 11px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.4;
+}
