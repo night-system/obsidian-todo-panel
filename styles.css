@@ -130,3 +130,19 @@
   font-size: 11px;
   color: var(--text-faint);
 }
+
+.todo-debug {
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-faint);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+}
+.todo-debug div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
