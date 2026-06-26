@@ -384,7 +384,16 @@ export default class TodoPanelPlugin extends Plugin {
   }
 
   refreshView() {
-    new Notice("已刷新");
+    // Debug: show complete_instances of recurring tasks
+    const todayStr = new Date().toISOString().slice(0, 10);
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      const cache = this.app.metadataCache.getFileCache(file);
+      if (!cache?.frontmatter) continue;
+      const fm = cache.frontmatter as Record<string, unknown>;
+      if (!fm.recurrence) continue;
+      const ci = Array.isArray(fm.complete_instances) ? fm.complete_instances : [];
+      new Notice((fm.title || file.basename) + ": " + JSON.stringify(ci));
+    }
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_TODO_PANEL))
       if (leaf.view instanceof TodoPanelView) leaf.view.render();
   }
