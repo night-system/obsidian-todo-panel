@@ -38,19 +38,26 @@ function parseISO8601Duration(dur: string): number {
 
 function pad(n: number): string { return String(n).padStart(2, "0"); }
 
+function parseDateToLocal(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+}
+
 function calcDateDistance(due: string | undefined, scheduled: string | undefined): string {
   const now = new Date();
   const today = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
   let earliest: string | null = null;
-  const d1 = due ? new Date(due) : null;
-  const d2 = scheduled ? new Date(scheduled) : null;
+  const d1 = due ? parseDateToLocal(due) : null;
+  const d2 = scheduled ? parseDateToLocal(scheduled) : null;
   if (d1 && d2) earliest = d1 <= d2 ? due! : scheduled!;
   else if (d1) earliest = due!;
   else if (d2) earliest = scheduled!;
   else return "";
 
-  const target = new Date(earliest!);
-  const todayDate = new Date(today + "T00:00:00");
+  const target = parseDateToLocal(earliest!)!;
+  const todayDate = parseDateToLocal(today)!;
   const diffDays = Math.ceil((target.getTime() - todayDate.getTime()) / 86400000);
 
   if (diffDays < 1) return "1day-";
@@ -371,7 +378,7 @@ class TodoPanelView extends ItemView {
     let newDue = "";
     if (ruleStr) {
       try {
-        const startDate = parsed.scheduled ? new Date(parsed.scheduled as string) : today;
+        const startDate = parsed.scheduled ? (parseDateToLocal(parsed.scheduled as string) || today) : today;
         const opts = RRule.parseString(ruleStr);
         opts.dtstart = startDate;
         const rule = new RRule(opts);
@@ -501,7 +508,10 @@ export default class TodoPanelPlugin extends Plugin {
         } else if (rem.type === "relative" && rem.relatedTo && rem.offset) {
           const anchor = fm[rem.relatedTo as string];
           if (anchor && typeof anchor === "string") {
-            notifyAt = new Date(anchor).getTime() + parseISO8601Duration(rem.offset);
+            const anchorDate = parseDateToLocal(anchor);
+            if (anchorDate) {
+              notifyAt = anchorDate.getTime() + parseISO8601Duration(rem.offset);
+            }
           }
         }
 
