@@ -67,6 +67,7 @@ function calcDateDistance(due: string | undefined, scheduled: string | undefined
 
 interface DueReminder {
   id: string;
+  type: string;
   description: string;
 }
 
@@ -176,7 +177,17 @@ class TodoPanelView extends ItemView {
           setIcon(cb, "circle");
           cb.addEventListener("click", async (e: Event) => {
             e.stopPropagation();
-            await this.plugin.deleteReminder(rem.path, dr.id);
+            const file = this.plugin.app.vault.getAbstractFileByPath(rem.path);
+            if (file instanceof TFile) {
+              const cache = this.plugin.app.metadataCache.getFileCache(file);
+              const fm = cache?.frontmatter as Record<string, unknown> | undefined;
+              const hasRepeat = fm?.["todopanel-reminder-repeat"] === true;
+              if (hasRepeat && dr.type === "absolute") {
+                await this.plugin.advanceAbsoluteReminder(rem.path, dr.id);
+              } else {
+                await this.plugin.deleteReminder(rem.path, dr.id);
+              }
+            }
             this.plugin.refreshView();
           });
 
@@ -249,6 +260,10 @@ class TodoPanelView extends ItemView {
       list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
 
     container.scrollTop = scrollTop;
+
+    container.createDiv("todo-panel-version").createSpan({
+      text: "v" + this.plugin.manifest.version,
+    });
   }
 
   async buildSubtaskArea(el: HTMLElement, filePath: string) {
@@ -518,6 +533,7 @@ export default class TodoPanelPlugin extends Plugin {
         if (notifyAt > 0 && notifyAt <= now) {
           group.dueReminders.push({
             id: rem.id,
+            type: rem.type,
             description: rem.description || group.taskTitle,
           });
         }
@@ -539,6 +555,22 @@ export default class TodoPanelPlugin extends Plugin {
       if (Array.isArray(rems)) {
         fm.reminders = rems.filter((r: any) => r.id !== reminderId);
         if (fm.reminders.length === 0) delete fm.reminders;
+      }
+    });
+  }
+
+  async advanceAbsoluteReminder(filePath: string, reminderId: string) {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return;
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, any>) => {
+      const rems = fm.reminders || [];
+      if (Array.isArray(rems)) {
+        const target = rems.find((r: any) => r.id === reminderId);
+        if (target?.type === "absolute" && target.absoluteTime) {
+          target.absoluteTime = new Date(
+            new Date(target.absoluteTime).getTime() + 86400000
+          ).toISOString();
+        }
       }
     });
   }
