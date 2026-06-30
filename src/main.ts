@@ -36,6 +36,16 @@ function parseISO8601Duration(dur: string): number {
   return neg ? -ms : ms;
 }
 
+function formatLocalISO(ts: number): string {
+  const d = new Date(ts);
+  return d.getFullYear() + "-" +
+    pad(d.getMonth() + 1) + "-" +
+    pad(d.getDate()) + "T" +
+    pad(d.getHours()) + ":" +
+    pad(d.getMinutes()) + ":" +
+    pad(d.getSeconds());
+}
+
 function pad(n: number): string { return String(n).padStart(2, "0"); }
 
 function parseDateToLocal(dateStr: string): Date | null {
@@ -567,9 +577,9 @@ export default class TodoPanelPlugin extends Plugin {
       if (Array.isArray(rems)) {
         const target = rems.find((r: any) => r.id === reminderId);
         if (target?.type === "absolute" && target.absoluteTime) {
-          target.absoluteTime = new Date(
+          target.absoluteTime = formatLocalISO(
             new Date(target.absoluteTime).getTime() + 86400000
-          ).toISOString();
+          );
         }
       }
     });
