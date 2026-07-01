@@ -145,7 +145,7 @@ class TodoPanelView extends ItemView {
 
       // bell / sparkles icon
       const bell = row.createSpan("todo-reminder-bell");
-      setIcon(bell, rem.hasRepeat ? "sparkles" : "bell");
+      setIcon(bell, rem.hasRepeat ? "sparkle" : "bell");
 
       // task title
       row.createSpan({ text: rem.taskTitle, cls: "todo-reminder-task-name" });
