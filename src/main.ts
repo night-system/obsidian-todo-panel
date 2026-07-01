@@ -86,6 +86,7 @@ interface ReminderGroup {
   path: string;
   dateDistance: string;
   dueReminders: DueReminder[];
+  hasRepeat: boolean;
 }
 
 interface ReminderDef {
@@ -142,18 +143,26 @@ class TodoPanelView extends ItemView {
       const wrapper = list.createDiv("todo-card-wrapper");
       const row = wrapper.createDiv("todo-reminder-row");
 
-      // bell icon
+      // bell / sparkles icon
       const bell = row.createSpan("todo-reminder-bell");
-      setIcon(bell, "bell");
+      setIcon(bell, rem.hasRepeat ? "sparkles" : "bell");
 
       // task title
       row.createSpan({ text: rem.taskTitle, cls: "todo-reminder-task-name" });
 
-      // date distance badge
+      // right side: date badge or columns-3 icon
       const badge = row.createSpan("todo-reminder-badge");
-      badge.setText(rem.dateDistance);
+      if (rem.hasRepeat) {
+        setIcon(badge, "columns-3");
+        badge.addEventListener("click", (e: Event) => {
+          e.stopPropagation();
+          (this.plugin.app as any).commands.executeCommandById("tasknotes:open-kanban-view");
+        });
+      } else {
+        badge.setText(rem.dateDistance);
+      }
 
-      // click bell/badge → toggle expand
+      // click bell → toggle expand
       const pathKey = "rem-" + rem.path;
       const toggleExpand = (e: Event) => {
         e.stopPropagation();
@@ -164,7 +173,9 @@ class TodoPanelView extends ItemView {
         this.render();
       };
       bell.addEventListener("click", toggleExpand);
-      badge.addEventListener("click", toggleExpand);
+      if (!rem.hasRepeat) {
+        badge.addEventListener("click", toggleExpand);
+      }
 
       // click title → open file
       row.addEventListener("click", () => {
@@ -521,6 +532,7 @@ export default class TodoPanelPlugin extends Plugin {
             fm.scheduled as string | undefined
           ),
           dueReminders: [],
+          hasRepeat: fm["todopanel-reminder-repeat"] === true,
         });
       }
       const group = groupMap.get(key)!;
