@@ -281,10 +281,6 @@ class TodoPanelView extends ItemView {
       list.createEl("p", { text: "No tasks in progress", cls: "todo-panel-empty" });
 
     container.scrollTop = scrollTop;
-
-    container.createDiv("todo-panel-version").createSpan({
-      text: "v" + this.plugin.manifest.version,
-    });
   }
 
   async buildSubtaskArea(el: HTMLElement, filePath: string) {
@@ -566,6 +562,11 @@ export default class TodoPanelPlugin extends Plugin {
     for (const g of groupMap.values()) {
       if (g.dueReminders.length > 0) items.push(g);
     }
+    items.sort((a, b) => {
+      if (a.hasRepeat && !b.hasRepeat) return -1;
+      if (!a.hasRepeat && b.hasRepeat) return 1;
+      return 0;
+    });
     return items;
   }
 
